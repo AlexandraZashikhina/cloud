@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ns-11-app-dep
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: ns-11-app-dep
+  template:
+    metadata:
+      labels:
+        app: ns-11-app-dep
+    spec:
+      containers:
+      - name: ns-11-app-dep
+        image: iregistry.gitlab.com/distributed-systems-and-computing/achieve-2
+        ports:
+        - containerPort: 5000
+        env:
+        - name: APP_PORT
+          value: "5000"
+        - name: DB_USER
+          value: "user"
+        - name: DB_PASS
+          value: "pass"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "rvs"
+        - name: DB_URL
+          value: "ns-11-db-service"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-11-dep-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-11-dep-db
+  template:
+    metadata:
+      labels:
+        app: node-11-dep-db
+    spec:
+      containers:
+      - name: node-11-dep-db
+        image: postgres
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "user"
+        - name: POSTGRES_PASSWORD
+          value: "pass"
+        - name: POSTGRES_DB
+          value: "rvs"
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ns-11-db-service
+spec:
+#  type: LoadBalancer
+#  type: ClusterIP
+  ports:
+  - port: 5432
+  selector:
+    app: node-11-dep-db
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ns-11-load-balancer
+spec:
+#  type: LoadBalancer
+#  type: ClusterIP
+  ports:
+  - port: 5000
+  selector:
+    app: ns-11-app-dep
+
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: node-11-ing
+spec:
+  rules:
+  - host: node-11.hse
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: ns-11-load-balancer
+          servicePort: 5000	
+
+
+
